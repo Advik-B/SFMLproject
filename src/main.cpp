@@ -63,8 +63,10 @@ private:
 
 // On resize, update the view to the new size
 void resizeView(const sf::RenderWindow& window, sf::View& view) {
-    float aspectRatio = float(window.getSize().x) / float(window.getSize().y);
-    view.setSize(dimRatio[0] * aspectRatio, dimRatio[1]);
+    view.setSize(static_cast<float>(window.getSize().x), static_cast<float>(window.getSize().y));
+    view.setCenter(static_cast<float>(window.getSize().x) / 2.f, static_cast<float>(window.getSize().y) / 2.f);
+    dimRatio[0] = window.getSize().x;
+    dimRatio[1] = window.getSize().y;
 }
 
 
@@ -87,9 +89,19 @@ int main() {
     window.setVerticalSyncEnabled(true);
     window.setMouseCursorVisible(false);
 
+    sf::View view = window.getDefaultView();
+
+
     // Initialize ImGui, but make sure it doesn't turn on the mouse cursor
+    // Ignore *.ini file for ImGui settings
     ImGui::SFML::Init(window);
+
+    // Disable ImGui mouse cursor
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+
+    // Ignore *.ini file for ImGui settings
+    ImGui::GetIO().IniFilename = nullptr;
+
 
     auto updateParticles = [&particles] {
         while (true) {
@@ -115,25 +127,35 @@ int main() {
                 window.close();
             }
 
-            if (event.type == sf::Event::MouseButtonPressed) {
+            else if (event.type == sf::Event::MouseButtonPressed) {
                 if (event.mouseButton.button == sf::Mouse::Right) {
                     particles.clear();
                 }
             }
+
+            else if (event.type == sf::Event::Resized) {
+                resizeView(window, view);
+                window.setView(view);
+                width = dimRatio[0];
+                height = dimRatio[1];
+
+            }
         }
-        ImGui::SFML::Update(window, deltaClock.restart());
 
         window.clear(sf::Color(35, 39, 46));
 
-        if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && particles.size() < 1000 && !ImGui::IsWindowFocused()) {
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && particles.size() < 1000 && ImGui::IsWindowFocused()) {
 
             sf::Vector2i mousePos = sf::Mouse::getPosition(window);
             Particle particle(5.f, sf::Vector2f(mousePos), sf::Vector2f(0.f, 0.f));
-            particles.push_back(particle);
+            // No need to push_back() here, since we reserved enough space in the vector
+            particles.emplace_back(particle);
             std::cout << std::endl;
             std::cout << "Particle created at: " << mousePos.x << ", " << mousePos.y << std::endl;
             std::cout << "Number of particles: " << particles.size() << std::endl;
         }
+
+        ImGui::SFML::Update(window, deltaClock.restart());
 
         for (auto& particle : particles) {
             particle.update(0.1f);
