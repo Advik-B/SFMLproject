@@ -25,9 +25,16 @@ FetchContent_Declare(
 )
 add_subdirectory(imgui-sfml)
 
+
 add_executable(SFMLproject src/main.cpp)
 target_link_libraries(SFMLproject PRIVATE sfml-graphics ImGui-SFML::ImGui-SFML)
 target_compile_features(SFMLproject PRIVATE cxx_std_17)
+
+# If debug build, add debug definitions
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(SFMLproject PRIVATE DEBUG)
+endif ()
+
 
 if(WIN32)
     add_custom_command(
