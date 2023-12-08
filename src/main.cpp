@@ -102,7 +102,8 @@ int main() {
     // Ignore *.ini file for ImGui settings
     ImGui::GetIO().IniFilename = nullptr;
 
-
+    // Move the ImGui window to the top left corner
+    ImGui::GetStyle().WindowRounding = 0.f;
     auto updateParticles = [&particles] {
         while (true) {
             for (auto& particle : particles) {
@@ -119,8 +120,9 @@ int main() {
 //        Start the thread for updating particles
     std::thread updateThread(updateParticles);
     sf::Clock deltaClock;
-
+    float currentTime = 0;
     while (window.isOpen()) {
+        currentTime = deltaClock.restart().asSeconds();
         for (auto event = sf::Event{}; window.pollEvent(event);) {
             ImGui::SFML::ProcessEvent(event);
             if (event.type == sf::Event::Closed) {
@@ -141,11 +143,18 @@ int main() {
 
             }
         }
-
         window.clear(sf::Color(35, 39, 46));
+
+        // If debug mode is enabled, dont check for IsWindowFocused()
+        // Otherwise, ImGui will crash the program when the mouse is clicked (for some reason)
+
+#ifdef DEBUG
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && particles.size() < 1000) {
+#else
 
         if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && particles.size() < 1000 && ImGui::IsWindowFocused()) {
 
+#endif
             sf::Vector2i mousePos = sf::Mouse::getPosition(window);
             Particle particle(5.f, sf::Vector2f(mousePos), sf::Vector2f(0.f, 0.f));
             // No need to push_back() here, since we reserved enough space in the vector
@@ -155,7 +164,7 @@ int main() {
             std::cout << "Number of particles: " << particles.size() << std::endl;
         }
 
-        ImGui::SFML::Update(window, deltaClock.restart());
+        ImGui::SFML::Update(window, deltaClock.getElapsedTime());
 
         for (auto& particle : particles) {
             particle.update(0.1f);
@@ -171,12 +180,23 @@ int main() {
         }
 
 
+        // Set the window position to the top left corner
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::Begin("Particle Simulation", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+        ImGui::Text("Number of particles: %zu   ", particles.size());
+        ImGui::Text("Window size: %d x %d", width, height);
+        ImGui::Text("Mouse position: %d, %d", sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+        ImGui::End();
+
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+
         ImGui::ShowDemoWindow();
         ImGui::SFML::Render(window);
 
         mousePointer.updateMousePosition(sf::Mouse::getPosition(window));
         mousePointer.drawTo(window);
         window.display();
+
 
     }
 
