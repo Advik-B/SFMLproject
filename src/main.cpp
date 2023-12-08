@@ -4,17 +4,18 @@
 #include <thread>
 #include <imgui-SFML.h>
 #include <imgui.h>
-#include <xmemory>
 
 int dimRatio[] = { 1920, 1080 };
+int maxParticles = 1000;
 
 class Particle : public sf::CircleShape {
 public:
     Particle(float radius, sf::Vector2f position, sf::Vector2f velocity)
         : sf::CircleShape(radius), velocity(velocity) {
         setPosition(position);
-        setFillColor(sf::Color(255, 213, 78)); // Set the particle color
+//        setFillColor(sf::Color(255, 213, 78)); // Set the particle color
         setOrigin(radius, radius); // Set origin to center of circle
+
     }
 
     void update(float dt) {
@@ -33,6 +34,12 @@ public:
 
     void invertVelocity() {
         velocity = -velocity;
+    }
+
+    ImVec4 ImVec4PointerColor() {
+        sf::Color sfColor = getFillColor();
+        ImVec4 color = ImVec4(sfColor.r / 255.f, sfColor.g / 255.f, sfColor.b / 255.f, sfColor.a / 255.f);
+        return color;
     }
 
 private:
@@ -57,6 +64,19 @@ public:
         shape.setPosition(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y));
     }
 
+    ImVec4 ImVec4PointerColor() {
+        sf::Color sfColor = shape.getFillColor();
+        ImVec4 color = ImVec4(sfColor.r / 255.f, sfColor.g / 255.f, sfColor.b / 255.f, sfColor.a / 255.f);
+        return color;
+    }
+
+    void setMousePointerColor(ImVec4 color) {
+        // Convert the color from ImGui to SFML
+        std::cout << "Color: " << color.x << ", " << color.y << ", " << color.z << ", " << color.w << std::endl;
+        sf::Color sfColor = sf::Color(color.x * 255, color.y * 255, color.z * 255, color.w * 255);
+        shape.setFillColor(sfColor);
+    }
+
 private:
     sf::CircleShape shape{ 10.f };
 };
@@ -68,6 +88,11 @@ void resizeView(const sf::RenderWindow& window, sf::View& view) {
     dimRatio[0] = window.getSize().x;
     dimRatio[1] = window.getSize().y;
 }
+
+ImVec4 fromSfColor(sf::Color color) {
+    return ImVec4(color.r / 255.f, color.g / 255.f, color.b / 255.f, color.a / 255.f);
+}
+
 
 
 int main() {
@@ -82,9 +107,9 @@ int main() {
     };
 
     std::vector<Particle> particles;
-    particles.reserve(1000);
+    particles.reserve(maxParticles);
 
-    MousePointer mousePointer(sf::Color(151, 167, 198), sf::Color::White);
+    MousePointer mousePointer(sf::Color(151, 167, 198, 0), sf::Color::White);
 
     window.setVerticalSyncEnabled(true);
     window.setMouseCursorVisible(false);
@@ -121,6 +146,7 @@ int main() {
     std::thread updateThread(updateParticles);
     sf::Clock deltaClock;
     float currentTime = 0;
+    ImVec4 particleColour = fromSfColor(sf::Color(255, 213, 78, 255));
     while (window.isOpen()) {
         currentTime = deltaClock.restart().asSeconds();
         for (auto event = sf::Event{}; window.pollEvent(event);) {
@@ -142,6 +168,12 @@ int main() {
                 height = dimRatio[1];
 
             }
+
+            else if (event.type == sf::Event::KeyPressed) {
+                if (event.key.code == sf::Keyboard::Escape) {
+                    window.close();
+                }
+            }
         }
         window.clear(sf::Color(35, 39, 46));
 
@@ -157,11 +189,15 @@ int main() {
 #endif
             sf::Vector2i mousePos = sf::Mouse::getPosition(window);
             Particle particle(5.f, sf::Vector2f(mousePos), sf::Vector2f(0.f, 0.f));
+            particle.setFillColor(sf::Color(particleColour.x * 255, particleColour.y * 255, particleColour.z * 255, particleColour.w * 255));
             // No need to push_back() here, since we reserved enough space in the vector
             particles.emplace_back(particle);
-            std::cout << std::endl;
-            std::cout << "Particle created at: " << mousePos.x << ", " << mousePos.y << std::endl;
-            std::cout << "Number of particles: " << particles.size() << std::endl;
+            if (particles.size() > maxParticles) {
+                while (particles.size() > maxParticles) {
+                    particles.pop_back();
+                }
+            }
+
         }
 
         ImGui::SFML::Update(window, deltaClock.getElapsedTime());
@@ -186,11 +222,36 @@ int main() {
         ImGui::Text("Number of particles: %zu   ", particles.size());
         ImGui::Text("Window size: %d x %d", width, height);
         ImGui::Text("Mouse position: %d, %d", sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+        ImGui::Text("FPS: %.1f", 1.f / currentTime);
+        // Add a spacer
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Text("Left click to create particles");
+        ImGui::Text("Right click to clear all particles");
+        ImGui::Text("Press ESC to exit");
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::SetColorEditOptions(ImGuiColorEditFlags_NoInputs);
+        // Enable Alpha channel
+
+        ImGui::SetColorEditOptions(ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoInputs);
+        if (ImGui::ColorEdit4("Particle Colour",(float*)&particleColour)) {
+            for (auto& particle : particles) {
+                particle.setFillColor(sf::Color(particleColour.x * 255, particleColour.y * 255, particleColour.z * 255, particleColour.w * 255));
+            }
+        }
+
+        ImGui::PushItemWidth(100.0f);
+        if (ImGui::SliderInt("Max particles", &maxParticles, 0, 10000, "%d")) {
+            particles.reserve(maxParticles);
+        }
+
         ImGui::End();
 
         ImGui::SetNextWindowPos(ImVec2(0, 0));
 
         ImGui::ShowDemoWindow();
+
         ImGui::SFML::Render(window);
 
         mousePointer.updateMousePosition(sf::Mouse::getPosition(window));
