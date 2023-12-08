@@ -96,13 +96,17 @@ ImVec4 fromSfColor(sf::Color color) {
 
 
 int main() {
-    unsigned int width = dimRatio[0] / 2;
-    unsigned int height = dimRatio[1] / 2;
+    unsigned int width = dimRatio[0];
+    unsigned int height = dimRatio[1];
+    sf::VideoMode desktop = sf::VideoMode::getDesktopMode();
+    width = desktop.width;
+    height = desktop.height;
+    dimRatio[0] = width;
+    dimRatio[1] = height;
     auto window = sf::RenderWindow{
-        { width, height },
+        desktop,
         "SFML test",
-//        sf::Style::Titlebar | sf::Style::Close,
-        sf::Style::Default,
+        sf::Style::Fullscreen,
         sf::ContextSettings{ 32, 8, 16 }
     };
 
@@ -129,6 +133,8 @@ int main() {
 
     // Move the ImGui window to the top left corner
     ImGui::GetStyle().WindowRounding = 0.f;
+    // Make the SFML window fullscreen
+
     auto updateParticles = [&particles] {
         while (true) {
             for (auto& particle : particles) {
@@ -223,15 +229,10 @@ int main() {
         ImGui::Text("Window size: %d x %d", width, height);
         ImGui::Text("Mouse position: %d, %d", sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
         ImGui::Text("FPS: %.1f", 1.f / currentTime);
+        ImGui::Spacing();
+        ImGui::Spacing();
         // Add a spacer
-        ImGui::Spacing();
-        ImGui::Spacing();
-        ImGui::Text("Left click to create particles");
-        ImGui::Text("Right click to clear all particles");
-        ImGui::Text("Press ESC to exit");
-        ImGui::Spacing();
-        ImGui::Spacing();
-        ImGui::SetColorEditOptions(ImGuiColorEditFlags_NoInputs);
+         ImGui::SetColorEditOptions(ImGuiColorEditFlags_NoInputs);
         // Enable Alpha channel
 
         ImGui::SetColorEditOptions(ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoInputs);
@@ -245,6 +246,12 @@ int main() {
         if (ImGui::SliderInt("Max particles", &maxParticles, 0, 10000, "%d")) {
             particles.reserve(maxParticles);
         }
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Text("Left click to create particles");
+        ImGui::Text("Right click to clear all particles");
+        ImGui::Text("Press ESC to exit");
+
 
         ImGui::End();
 
