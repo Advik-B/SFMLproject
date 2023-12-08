@@ -6,5 +6,5 @@ out
 .vscode
 
 # Project exclude paths
-/cmake-build-debug/CMakeFiles/
-/cmake-build-release/CMakeFiles/
+/cmake-build-debug/
+/cmake-build-release/
