@@ -1,0 +1,10 @@
+build
+out
+.cache
+.idea
+.vs
+.vscode
+
+# Project exclude paths
+/cmake-build-debug/CMakeFiles/
+/cmake-build-release/CMakeFiles/
